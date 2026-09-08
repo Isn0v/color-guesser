@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Угадай цвет</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <h1>🎨 Угадай цвет</h1>
+      <button id="btn-open-lb" class="btn icon-btn" title="Лидерборд">🏆</button>
+    </div>
+
+    <!-- ЭКРАН: старт / запоминание -->
+    <div id="screen-memorize" class="screen active">
+      <p class="subtitle" id="memorize-subtitle">Введи имя и начинай!</p>
+
+      <!-- Поле имени (только до первого старта) -->
+      <div id="name-row">
+        <input id="player-name" class="name-input" type="text"
+               maxlength="20" placeholder="Твоё имя…" />
+      </div>
+
+      <div id="target-swatch" class="swatch big hidden"></div>
+      <div id="timer-bar-wrap" class="hidden"><div id="timer-bar"></div></div>
+      <p id="countdown-label" class="countdown-label"></p>
+      <button id="btn-start" class="btn primary">▶ Начать игру</button>
+    </div>
+
+    <!-- ЭКРАН: угадывание -->
+    <div id="screen-guess" class="screen">
+      <p class="subtitle">Выбери тот же цвет</p>
+      <div class="palette-picker">
+        <div class="strip-col">
+          <div class="strip-wrap" id="hue-wrap">
+            <canvas id="hue-strip"></canvas>
+            <div class="strip-cursor" id="hue-cursor"></div>
+          </div>
+        </div>
+        <div class="strip-col">
+          <div class="strip-wrap" id="sat-wrap">
+            <canvas id="sat-strip"></canvas>
+            <div class="strip-cursor" id="sat-cursor"></div>
+          </div>
+        </div>
+        <div class="strip-col">
+          <div class="strip-wrap" id="lit-wrap">
+            <canvas id="lit-strip"></canvas>
+            <div class="strip-cursor" id="lit-cursor"></div>
+          </div>
+        </div>
+        <div id="guess-preview" class="color-preview">
+          <span id="guess-hex">#808080</span>
+        </div>
+      </div>
+      <button id="btn-submit" class="btn primary">✔ Проверить</button>
+    </div>
+
+    <!-- ЭКРАН: результат -->
+    <div id="screen-result" class="screen">
+      <p class="subtitle">Результат</p>
+      <div class="result-swatches">
+        <div class="result-col">
+          <div id="result-target" class="swatch medium"></div>
+          <span>Оригинал</span>
+        </div>
+        <div class="result-col">
+          <div id="result-guess" class="swatch medium"></div>
+          <span>Твой ответ</span>
+        </div>
+      </div>
+      <div id="result-stats" class="stats"></div>
+      <div id="result-grade" class="grade"></div>
+      <div class="result-actions">
+        <button id="btn-again" class="btn primary">🔄 Ещё раз</button>
+        <button id="btn-show-lb" class="btn secondary">🏆 Таблица</button>
+        <button id="btn-settings" class="btn secondary">⚙</button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН: лидерборд -->
+    <div id="screen-leaderboard" class="screen">
+      <p class="subtitle">🏆 Лидерборд</p>
+      <div id="lb-filters" class="lb-filters">
+        <button class="lb-filter active" data-diff="all">Все</button>
+        <button class="lb-filter" data-diff="easy">Лёгкий</button>
+        <button class="lb-filter" data-diff="medium">Средний</button>
+        <button class="lb-filter" data-diff="hard">Сложный</button>
+      </div>
+      <div id="lb-table-wrap">
+        <table id="lb-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Имя</th>
+              <th>Счёт</th>
+              <th>ΔE</th>
+              <th>Уровень</th>
+              <th>Дата</th>
+            </tr>
+          </thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+        <p id="lb-empty" class="lb-empty hidden">Пока нет записей. Сыграй первую игру!</p>
+      </div>
+      <div class="result-actions">
+        <button id="btn-lb-back" class="btn primary">← Назад</button>
+        <button id="btn-lb-clear" class="btn danger">🗑 Очистить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Настройки -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Настройки</h2>
+      <label>Время запоминания (сек):
+        <input type="number" id="setting-time" min="1" max="30" value="5" />
+      </label>
+      <label>Сложность:
+        <select id="setting-difficulty">
+          <option value="easy">Лёгкий (пастельные тона)</option>
+          <option value="medium" selected>Средний (любые цвета)</option>
+          <option value="hard">Сложный (тёмные / близкие тона)</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button id="btn-settings-save" class="btn primary">Сохранить</button>
+        <button id="btn-settings-cancel" class="btn secondary">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
