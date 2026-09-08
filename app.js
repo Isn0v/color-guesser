@@ -8,12 +8,10 @@ const state = {
   guessColor:   { r: 128, g: 128, b: 128 },
   h: 0, s: 0, l: 50,
   memorizeTime: 5,
-  difficulty:   'medium',
   timerHandle:  null,
   drag:         null,
   playerName:   '',
-  lbFilter:     'all',
-  prevScreen:   'memorize',   // to know where to return from leaderboard
+  prevScreen:   'memorize',
 };
 
 // ── DOM ────────────────────────────────────────
@@ -56,13 +54,11 @@ const btnOpenLb    = document.getElementById('btn-open-lb');
 
 const lbBody    = document.getElementById('lb-body');
 const lbEmpty   = document.getElementById('lb-empty');
-const lbFilters = document.querySelectorAll('.lb-filter');
 const btnLbBack = document.getElementById('btn-lb-back');
 const btnLbClear= document.getElementById('btn-lb-clear');
 
 const modalSettings     = document.getElementById('modal-settings');
 const settingTime       = document.getElementById('setting-time');
-const settingDifficulty = document.getElementById('setting-difficulty');
 const btnSettingsSave   = document.getElementById('btn-settings-save');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
 
@@ -92,9 +88,7 @@ function deltaE(a, b) {
 
 // ── Generate target ─────────────────────────────
 function rand(mn, mx) { return Math.round(Math.random()*(mx-mn)+mn); }
-function generateColor(diff) {
-  if (diff === 'easy') return { r:rand(128,255), g:rand(128,255), b:rand(128,255) };
-  if (diff === 'hard') return { r:rand(0,150),   g:rand(0,150),   b:rand(0,150)   };
+function generateColor() {
   return { r:rand(0,255), g:rand(0,255), b:rand(0,255) };
 }
 
@@ -177,7 +171,7 @@ function startMemorize() {
   nameRow.classList.add('hidden');
   memorizeSubtitle.textContent = 'Запомни этот цвет!';
 
-  state.targetColor = generateColor(state.difficulty);
+  state.targetColor = generateColor();
   targetSwatch.style.background = rgbStr(state.targetColor);
   targetSwatch.classList.remove('hidden');
   timerBarWrap.classList.remove('hidden');
@@ -246,13 +240,12 @@ function submitGuess() {
 
   // Save to leaderboard
   saveEntry({
-    name:       state.playerName,
+    name:  state.playerName,
     score,
-    dE:         Math.round(dE * 10) / 10,
-    difficulty: state.difficulty,
-    target:     rgbToHex(t),
-    guess:      rgbToHex(g),
-    date:       new Date().toLocaleDateString('ru-RU'),
+    dE:    Math.round(dE * 10) / 10,
+    target: rgbToHex(t),
+    guess:  rgbToHex(g),
+    date:  new Date().toLocaleDateString('ru-RU'),
   });
 
   showScreen('result');
@@ -279,17 +272,12 @@ function gradeClass(score) {
   if (score >= 45) return 'ok';
   return 'poor';
 }
-function diffLabel(d) {
-  return { easy:'Лёгкий', medium:'Средний', hard:'Сложный' }[d] || d;
-}
 function rankSymbol(i) {
   return ['🥇','🥈','🥉'][i] ?? (i + 1);
 }
 
 function renderLeaderboard() {
-  const all  = loadEntries();
-  const diff = state.lbFilter;
-  const rows = diff === 'all' ? all : all.filter(e => e.difficulty === diff);
+  const rows = loadEntries();
 
   if (rows.length === 0) {
     lbBody.innerHTML = '';
@@ -304,7 +292,6 @@ function renderLeaderboard() {
       <td>${escHtml(e.name)}</td>
       <td><span class="lb-score ${gradeClass(e.score)}">${e.score}</span></td>
       <td>${e.dE}</td>
-      <td><span class="lb-diff ${e.difficulty}">${diffLabel(e.difficulty)}</span></td>
       <td style="font-size:0.8rem;color:var(--muted)">${e.date}</td>
     </tr>
   `).join('');
@@ -316,31 +303,17 @@ function escHtml(s) {
 
 function openLeaderboard(fromScreen) {
   state.prevScreen = fromScreen;
-  state.lbFilter = 'all';
-  lbFilters.forEach(b => b.classList.toggle('active', b.dataset.diff === 'all'));
   renderLeaderboard();
   showScreen('leaderboard');
 }
 
-// ── Filter buttons ───────────────────────────────
-lbFilters.forEach(btn => {
-  btn.addEventListener('click', () => {
-    lbFilters.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.lbFilter = btn.dataset.diff;
-    renderLeaderboard();
-  });
-});
-
 // ── Settings ────────────────────────────────────
 btnSettings.addEventListener('click', () => {
   settingTime.value = state.memorizeTime;
-  settingDifficulty.value = state.difficulty;
   modalSettings.classList.remove('hidden');
 });
 btnSettingsSave.addEventListener('click', () => {
   state.memorizeTime = Math.max(1, Math.min(30, +settingTime.value)) || 5;
-  state.difficulty   = settingDifficulty.value;
   modalSettings.classList.add('hidden');
 });
 btnSettingsCancel.addEventListener('click', () => modalSettings.classList.add('hidden'));
@@ -363,11 +336,14 @@ btnStart.addEventListener('click', () => {
 btnSubmit.addEventListener('click', submitGuess);
 
 btnAgain.addEventListener('click', () => {
+  // Сбрасываем имя и показываем поле снова
+  playerNameInput.value = '';
+  nameRow.classList.remove('hidden');
   btnStart.style.display = '';
   targetSwatch.classList.add('hidden');
   timerBarWrap.classList.add('hidden');
   countdownLabel.textContent = '';
-  memorizeSubtitle.textContent = 'Следующий раунд!';
+  memorizeSubtitle.textContent = 'Введи имя и начинай!';
   showScreen('memorize');
 });
 

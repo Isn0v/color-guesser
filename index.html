@@ -83,12 +83,6 @@
     <!-- ЭКРАН: лидерборд -->
     <div id="screen-leaderboard" class="screen">
       <p class="subtitle">🏆 Лидерборд</p>
-      <div id="lb-filters" class="lb-filters">
-        <button class="lb-filter active" data-diff="all">Все</button>
-        <button class="lb-filter" data-diff="easy">Лёгкий</button>
-        <button class="lb-filter" data-diff="medium">Средний</button>
-        <button class="lb-filter" data-diff="hard">Сложный</button>
-      </div>
       <div id="lb-table-wrap">
         <table id="lb-table">
           <thead>
@@ -97,7 +91,6 @@
               <th>Имя</th>
               <th>Счёт</th>
               <th>ΔE</th>
-              <th>Уровень</th>
               <th>Дата</th>
             </tr>
           </thead>
@@ -118,13 +111,6 @@
       <h2>Настройки</h2>
       <label>Время запоминания (сек):
         <input type="number" id="setting-time" min="1" max="30" value="5" />
-      </label>
-      <label>Сложность:
-        <select id="setting-difficulty">
-          <option value="easy">Лёгкий (пастельные тона)</option>
-          <option value="medium" selected>Средний (любые цвета)</option>
-          <option value="hard">Сложный (тёмные / близкие тона)</option>
-        </select>
       </label>
       <div class="modal-actions">
         <button id="btn-settings-save" class="btn primary">Сохранить</button>
