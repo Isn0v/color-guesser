@@ -4,33 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Угадай цвет</title>
+  <!-- Emoji favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <div class="top-bar">
-      <h1>🎨 Угадай цвет</h1>
-      <button id="btn-open-lb" class="btn icon-btn" title="Лидерборд">🏆</button>
+      <h1><span class="h1-icon">🎨</span> Угадай цвет</h1>
+      <div class="top-btn-group">
+        <button id="btn-open-lb" class="icon-btn" title="Лидерборд">🏆</button>
+        <button id="btn-help"    class="icon-btn" title="Как играть">❓</button>
+      </div>
     </div>
 
-    <!-- ЭКРАН: старт / запоминание -->
+    <!-- ══ ЭКРАН: старт ══ -->
     <div id="screen-memorize" class="screen active">
       <p class="subtitle" id="memorize-subtitle">Введи имя и начинай!</p>
 
-      <!-- Поле имени (только до первого старта) -->
       <div id="name-row">
         <input id="player-name" class="name-input" type="text"
-               maxlength="20" placeholder="Твоё имя…" />
+               maxlength="20" placeholder="Твоё имя…" autocomplete="off" />
       </div>
 
+      <div id="round-badge-mem" class="round-badge hidden"></div>
       <div id="target-swatch" class="swatch big hidden"></div>
       <div id="timer-bar-wrap" class="hidden"><div id="timer-bar"></div></div>
       <p id="countdown-label" class="countdown-label"></p>
-      <button id="btn-start" class="btn primary">▶ Начать игру</button>
+
+      <button id="btn-start" class="btn primary large-btn">▶ Начать игру</button>
     </div>
 
-    <!-- ЭКРАН: угадывание -->
+    <!-- ══ ЭКРАН: угадывание ══ -->
     <div id="screen-guess" class="screen">
+      <div id="round-badge-guess" class="round-badge"></div>
       <p class="subtitle">Выбери тот же цвет</p>
       <div class="palette-picker">
         <div class="strip-col">
@@ -55,12 +62,14 @@
           <span id="guess-hex">#808080</span>
         </div>
       </div>
-      <button id="btn-submit" class="btn primary">✔ Проверить</button>
+      <button id="btn-submit" class="btn primary large-btn">✔ Проверить</button>
     </div>
 
-    <!-- ЭКРАН: результат -->
+    <!-- ══ ЭКРАН: результат раунда ══ -->
     <div id="screen-result" class="screen">
-      <p class="subtitle">Результат</p>
+      <div id="result-round-badge" class="round-badge"></div>
+      <p class="subtitle" id="result-subtitle">Результат раунда</p>
+
       <div class="result-swatches">
         <div class="result-col">
           <div id="result-target" class="swatch medium"></div>
@@ -71,16 +80,29 @@
           <span>Твой ответ</span>
         </div>
       </div>
+
       <div id="result-stats" class="stats"></div>
       <div id="result-grade" class="grade"></div>
+
+      <!-- Прогресс всех раундов -->
+      <div id="rounds-progress" class="rounds-progress"></div>
+
+      <!-- Финальный итог (только после последнего раунда) -->
+      <div id="final-total" class="final-total hidden">
+        <span class="total-label">Итого</span>
+        <span id="total-val" class="total-val">0</span>
+        <span id="total-max" class="total-max">/ 300</span>
+      </div>
+
       <div class="result-actions">
-        <button id="btn-again" class="btn primary">🔄 Ещё раз</button>
-        <button id="btn-show-lb" class="btn secondary">🏆 Таблица</button>
-        <button id="btn-settings" class="btn secondary">⚙</button>
+        <button id="btn-next-round" class="btn primary large-btn hidden">Следующий раунд →</button>
+        <button id="btn-again"      class="btn primary large-btn hidden">🔄 Новая игра</button>
+        <button id="btn-show-lb"    class="btn secondary">🏆 Таблица</button>
+        <button id="btn-settings"   class="btn secondary">⚙</button>
       </div>
     </div>
 
-    <!-- ЭКРАН: лидерборд -->
+    <!-- ══ ЭКРАН: лидерборд ══ -->
     <div id="screen-leaderboard" class="screen">
       <p class="subtitle">🏆 Лидерборд</p>
       <div id="lb-table-wrap">
@@ -90,32 +112,80 @@
               <th>#</th>
               <th>Имя</th>
               <th>Счёт</th>
-              <th>ΔE</th>
+              <th>Раунды</th>
               <th>Дата</th>
             </tr>
           </thead>
           <tbody id="lb-body"></tbody>
         </table>
-        <p id="lb-empty" class="lb-empty hidden">Пока нет записей. Сыграй первую игру!</p>
+        <p id="lb-empty" class="lb-empty hidden">Пока нет записей — сыграй первую игру!</p>
       </div>
       <div class="result-actions">
-        <button id="btn-lb-back" class="btn primary">← Назад</button>
+        <button id="btn-lb-back"  class="btn primary">← Назад</button>
         <button id="btn-lb-clear" class="btn danger">🗑 Очистить</button>
       </div>
     </div>
   </div>
 
-  <!-- Настройки -->
+  <!-- ══ МОДАЛ: настройки ══ -->
   <div id="modal-settings" class="modal-overlay hidden">
     <div class="modal">
-      <h2>Настройки</h2>
+      <h2>⚙ Настройки</h2>
       <label>Время запоминания (сек):
         <input type="number" id="setting-time" min="1" max="30" value="5" />
       </label>
+      <label>Количество раундов:
+        <input type="number" id="setting-rounds" min="1" max="10" value="3" />
+      </label>
       <div class="modal-actions">
-        <button id="btn-settings-save" class="btn primary">Сохранить</button>
+        <button id="btn-settings-save"   class="btn primary">Сохранить</button>
         <button id="btn-settings-cancel" class="btn secondary">Отмена</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ МОДАЛ: справка ══ -->
+  <div id="modal-help" class="modal-overlay hidden">
+    <div class="modal modal-help">
+      <h2>❓ Как играть</h2>
+
+      <div class="help-section">
+        <h3>🎯 Цель</h3>
+        <p>Запомни показанный цвет и воспроизведи его как можно точнее с помощью палитры HSL.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>🎮 Управление палитрой</h3>
+        <ul>
+          <li>🌈 <b>Левая полоса</b> — оттенок (Hue): тяни вверх/вниз по радуге</li>
+          <li>🎨 <b>Средняя полоса</b> — насыщенность: вверх = ярко, вниз = серо</li>
+          <li>☀️ <b>Правая полоса</b> — яркость: вверх = белый, вниз = чёрный</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>📊 Оценки раунда</h3>
+        <table class="help-table">
+          <thead><tr><th>Счёт</th><th>Оценка</th></tr></thead>
+          <tbody>
+            <tr><td>90–100</td><td>🏆 Отлично!</td></tr>
+            <tr><td>70–89</td><td>👍 Хорошо!</td></tr>
+            <tr><td>45–69</td><td>😐 Неплохо</td></tr>
+            <tr><td>0–44</td><td>😬 Попробуй ещё</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="help-section">
+        <h3>⚙ Настройки</h3>
+        <ul>
+          <li><b>Время запоминания</b> — сколько секунд виден цвет (1–30)</li>
+          <li><b>Раунды</b> — количество цветов за одну игру (1–10, по умолчанию 3)</li>
+        </ul>
+        <p style="margin-top:6px">Итоговый счёт = сумма очков за все раунды.</p>
+      </div>
+
+      <button id="btn-help-close" class="btn primary large-btn">Понятно!</button>
     </div>
   </div>
 

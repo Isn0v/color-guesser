@@ -4,23 +4,30 @@
 
 // ── State ──────────────────────────────────────
 const state = {
-  targetColor:  { r: 0, g: 0, b: 0 },
-  guessColor:   { r: 128, g: 128, b: 128 },
+  // colors
+  targetColor: { r: 0, g: 0, b: 0 },
+  guessColor:  { r: 128, g: 128, b: 128 },
+  // HSL picker
   h: 0, s: 0, l: 50,
+  // game flow
   memorizeTime: 5,
-  timerHandle:  null,
-  drag:         null,
+  roundsTotal:  3,
+  currentRound: 1,
+  roundScores:  [],   // [{score, dE, target, guess}]
   playerName:   '',
   prevScreen:   'memorize',
+  // drag
+  drag: null,
 };
 
-// ── DOM ────────────────────────────────────────
+// ── DOM refs ────────────────────────────────────
 const screens = {
   memorize:    document.getElementById('screen-memorize'),
   guess:       document.getElementById('screen-guess'),
   result:      document.getElementById('screen-result'),
   leaderboard: document.getElementById('screen-leaderboard'),
 };
+
 const targetSwatch    = document.getElementById('target-swatch');
 const timerBar        = document.getElementById('timer-bar');
 const timerBarWrap    = document.getElementById('timer-bar-wrap');
@@ -29,6 +36,7 @@ const btnStart        = document.getElementById('btn-start');
 const playerNameInput = document.getElementById('player-name');
 const nameRow         = document.getElementById('name-row');
 const memorizeSubtitle= document.getElementById('memorize-subtitle');
+const roundBadgeMem   = document.getElementById('round-badge-mem');
 
 const hueStrip    = document.getElementById('hue-strip');
 const satStrip    = document.getElementById('sat-strip');
@@ -42,15 +50,23 @@ const litCursor   = document.getElementById('lit-cursor');
 const guessPreview= document.getElementById('guess-preview');
 const guessHex    = document.getElementById('guess-hex');
 const btnSubmit   = document.getElementById('btn-submit');
+const roundBadgeGuess = document.getElementById('round-badge-guess');
 
-const resultTarget = document.getElementById('result-target');
-const resultGuess  = document.getElementById('result-guess');
-const resultStats  = document.getElementById('result-stats');
-const resultGrade  = document.getElementById('result-grade');
-const btnAgain     = document.getElementById('btn-again');
-const btnShowLb    = document.getElementById('btn-show-lb');
-const btnSettings  = document.getElementById('btn-settings');
-const btnOpenLb    = document.getElementById('btn-open-lb');
+const resultRoundBadge= document.getElementById('result-round-badge');
+const resultSubtitle  = document.getElementById('result-subtitle');
+const resultTarget    = document.getElementById('result-target');
+const resultGuess     = document.getElementById('result-guess');
+const resultStats     = document.getElementById('result-stats');
+const resultGrade     = document.getElementById('result-grade');
+const roundsProgress  = document.getElementById('rounds-progress');
+const finalTotal      = document.getElementById('final-total');
+const totalVal        = document.getElementById('total-val');
+const totalMax        = document.getElementById('total-max');
+const btnNextRound    = document.getElementById('btn-next-round');
+const btnAgain        = document.getElementById('btn-again');
+const btnShowLb       = document.getElementById('btn-show-lb');
+const btnSettings     = document.getElementById('btn-settings');
+const btnOpenLb       = document.getElementById('btn-open-lb');
 
 const lbBody    = document.getElementById('lb-body');
 const lbEmpty   = document.getElementById('lb-empty');
@@ -59,11 +75,16 @@ const btnLbClear= document.getElementById('btn-lb-clear');
 
 const modalSettings     = document.getElementById('modal-settings');
 const settingTime       = document.getElementById('setting-time');
+const settingRounds     = document.getElementById('setting-rounds');
 const btnSettingsSave   = document.getElementById('btn-settings-save');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
 
+const modalHelp      = document.getElementById('modal-help');
+const btnHelp        = document.getElementById('btn-help');
+const btnHelpClose   = document.getElementById('btn-help-close');
+
 // ── Canvas sizes ────────────────────────────────
-const STRIP_W = 42, STRIP_H = 280;
+const STRIP_W = 52, STRIP_H = 340;
 [hueStrip, satStrip, litStrip].forEach(c => { c.width = STRIP_W; c.height = STRIP_H; });
 
 // ── Color math ──────────────────────────────────
@@ -85,14 +106,26 @@ function deltaE(a, b) {
   const rm = (a.r+b.r)/2, dr = a.r-b.r, dg = a.g-b.g, db = a.b-b.b;
   return Math.sqrt((2+rm/256)*dr*dr + 4*dg*dg + (2+(255-rm)/256)*db*db);
 }
+function gradeClass(score) {
+  if (score >= 90) return 'excellent';
+  if (score >= 70) return 'good';
+  if (score >= 45) return 'ok';
+  return 'poor';
+}
+function gradeEmoji(score) {
+  if (score >= 90) return '🏆 Отлично!';
+  if (score >= 70) return '👍 Хорошо!';
+  if (score >= 45) return '😐 Неплохо';
+  return '😬 Попробуй ещё';
+}
 
-// ── Generate target ─────────────────────────────
+// ── Generate color ───────────────────────────────
 function rand(mn, mx) { return Math.round(Math.random()*(mx-mn)+mn); }
 function generateColor() {
   return { r:rand(0,255), g:rand(0,255), b:rand(0,255) };
 }
 
-// ── Draw strips ─────────────────────────────────
+// ── Strip drawing ────────────────────────────────
 function drawHueStrip() {
   const ctx = hueStrip.getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 0, STRIP_H);
@@ -116,7 +149,7 @@ function drawLitStrip() {
 }
 function redrawAll() { drawHueStrip(); drawSatStrip(); drawLitStrip(); }
 
-// ── Apply HSL → cursors + preview ──────────────
+// ── Apply HSL ────────────────────────────────────
 function applyHSL() {
   hueCursor.style.top = (state.h / 360) * STRIP_H + 'px';
   satCursor.style.top = (1 - state.s / 100) * STRIP_H + 'px';
@@ -158,28 +191,32 @@ document.addEventListener('touchmove', e => { if (state.drag) { e.preventDefault
 document.addEventListener('mouseup',   () => { state.drag = null; });
 document.addEventListener('touchend',  () => { state.drag = null; });
 
-// ── Screen switch ───────────────────────────────
+// ── Screen helpers ──────────────────────────────
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
 }
+function setBadge(el, round, total) {
+  const isFinal = round === total;
+  el.textContent = isFinal ? `🏁 Финал (раунд ${total})` : `Раунд ${round} из ${total}`;
+  el.classList.toggle('final', isFinal);
+  el.classList.remove('hidden');
+}
 
 // ── Memorize phase ──────────────────────────────
 function startMemorize() {
-  state.playerName = playerNameInput.value.trim() || 'Аноним';
-  // hide name row after first start
-  nameRow.classList.add('hidden');
-  memorizeSubtitle.textContent = 'Запомни этот цвет!';
-
   state.targetColor = generateColor();
   targetSwatch.style.background = rgbStr(state.targetColor);
   targetSwatch.classList.remove('hidden');
   timerBarWrap.classList.remove('hidden');
+  btnStart.style.display = 'none';
+  nameRow.classList.add('hidden');
+  memorizeSubtitle.textContent = 'Запомни этот цвет!';
+  setBadge(roundBadgeMem, state.currentRound, state.roundsTotal);
 
   timerBar.style.transition = 'none';
   timerBar.style.width = '100%';
   countdownLabel.textContent = state.memorizeTime + ' с';
-  btnStart.style.display = 'none';
 
   requestAnimationFrame(() => {
     timerBar.style.transition = `width ${state.memorizeTime}s linear`;
@@ -204,80 +241,146 @@ function startMemorize() {
 function startGuess() {
   state.h = 0; state.s = 0; state.l = 50;
   redrawAll(); applyHSL();
+  setBadge(roundBadgeGuess, state.currentRound, state.roundsTotal);
   showScreen('guess');
 }
 
-// ── Submit ──────────────────────────────────────
+// ── Submit guess ────────────────────────────────
 function submitGuess() {
   const t = state.targetColor, g = state.guessColor;
   const dist  = colorDistance(t, g);
-  const dE    = deltaE(t, g);
+  const dE    = Math.round(deltaE(t, g) * 10) / 10;
   const score = Math.max(0, Math.round(100 - (dist / 441) * 100));
 
+  state.roundScores.push({ score, dE, target: rgbToHex(t), guess: rgbToHex(g) });
+
+  const isFinal = state.currentRound >= state.roundsTotal;
+  showRoundResult(score, dE, t, g, isFinal);
+
+  if (isFinal) {
+    const total = state.roundScores.reduce((s, r) => s + r.score, 0);
+    saveEntry({
+      name:        state.playerName,
+      totalScore:  total,
+      maxScore:    state.roundsTotal * 100,
+      rounds:      state.roundsTotal,
+      roundScores: state.roundScores.map(r => r.score),
+      date:        new Date().toLocaleDateString('ru-RU'),
+    });
+  } else {
+    state.currentRound++;
+  }
+}
+
+// ── Show round result ───────────────────────────
+function showRoundResult(score, dE, t, g, isFinal) {
+  // Badge
+  setBadge(resultRoundBadge, state.currentRound, state.roundsTotal);
+  resultSubtitle.textContent = isFinal ? 'Финальный результат' : 'Результат раунда';
+
+  // Swatches
   resultTarget.style.background = rgbStr(t);
   resultGuess.style.background  = rgbStr(g);
 
+  // Stats
   resultStats.innerHTML = `
     <span class="label">Оригинал:</span>
-    <span class="value">${rgbToHex(t).toUpperCase()} &nbsp; rgb(${t.r}, ${t.g}, ${t.b})</span><br>
+    <span class="value">${rgbToHex(t).toUpperCase()} &nbsp; rgb(${t.r},${t.g},${t.b})</span><br>
     <span class="label">Твой ответ:</span>
-    <span class="value">${rgbToHex(g).toUpperCase()} &nbsp; rgb(${g.r}, ${g.g}, ${g.b})</span><br>
+    <span class="value">${rgbToHex(g).toUpperCase()} &nbsp; rgb(${g.r},${g.g},${g.b})</span><br>
     <span class="label">Расстояние RGB:</span>
-    <span class="value">${dist.toFixed(1)} / 441</span><br>
+    <span class="value">${colorDistance(t,g).toFixed(1)} / 441</span><br>
     <span class="label">Воспринимаемое ΔE:</span>
-    <span class="value">${dE.toFixed(1)}</span><br>
-    <span class="label">Счёт:</span>
+    <span class="value">${dE}</span><br>
+    <span class="label">Счёт раунда:</span>
     <span class="value">${score} / 100</span>
   `;
 
-  resultGrade.className = 'grade';
-  let txt;
-  if      (score >= 90) { txt = '🏆 Отлично!';         resultGrade.classList.add('excellent'); }
-  else if (score >= 70) { txt = '👍 Хорошо!';           resultGrade.classList.add('good'); }
-  else if (score >= 45) { txt = '😐 Неплохо';           resultGrade.classList.add('ok'); }
-  else                  { txt = '😬 Попробуй ещё раз';  resultGrade.classList.add('poor'); }
-  resultGrade.textContent = txt;
+  // Grade
+  resultGrade.className = 'grade ' + gradeClass(score);
+  resultGrade.textContent = gradeEmoji(score);
 
-  // Save to leaderboard
-  saveEntry({
-    name:  state.playerName,
-    score,
-    dE:    Math.round(dE * 10) / 10,
-    target: rgbToHex(t),
-    guess:  rgbToHex(g),
-    date:  new Date().toLocaleDateString('ru-RU'),
-  });
+  // Rounds progress pills
+  renderRoundsPills(isFinal);
+
+  // Final total
+  if (isFinal) {
+    const total = state.roundScores.reduce((s, r) => s + r.score, 0);
+    const max   = state.roundsTotal * 100;
+    totalVal.textContent = total;
+    totalMax.textContent = `/ ${max}`;
+    totalVal.style.color = score2color(Math.round(total / max * 100));
+    finalTotal.classList.remove('hidden');
+  } else {
+    finalTotal.classList.add('hidden');
+  }
+
+  // Buttons
+  btnNextRound.classList.toggle('hidden', isFinal);
+  btnAgain.classList.toggle('hidden', !isFinal);
 
   showScreen('result');
 }
 
-// ── Leaderboard storage ─────────────────────────
-const LS_KEY = 'colorGuesserLB';
-
-function loadEntries() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
-  catch { return []; }
-}
-function saveEntry(entry) {
-  const entries = loadEntries();
-  entries.push(entry);
-  // keep best 200 entries sorted by score desc
-  entries.sort((a, b) => b.score - a.score);
-  localStorage.setItem(LS_KEY, JSON.stringify(entries.slice(0, 200)));
-}
-
-function gradeClass(score) {
-  if (score >= 90) return 'excellent';
-  if (score >= 70) return 'good';
-  if (score >= 45) return 'ok';
-  return 'poor';
-}
-function rankSymbol(i) {
-  return ['🥇','🥈','🥉'][i] ?? (i + 1);
+function renderRoundsPills(isFinal) {
+  roundsProgress.innerHTML = '';
+  for (let i = 0; i < state.roundsTotal; i++) {
+    const pill = document.createElement('div');
+    pill.className = 'round-pill';
+    const roundNum = i + 1;
+    const done = i < state.roundScores.length;
+    if (done) {
+      const s = state.roundScores[i].score;
+      pill.classList.add('done-' + gradeClass(s));
+      if (roundNum === state.currentRound && !isFinal) pill.classList.add('current');
+      pill.textContent = `${roundNum}: ${s}`;
+    } else {
+      pill.classList.add('pending');
+      pill.textContent = `${roundNum}: —`;
+    }
+    roundsProgress.appendChild(pill);
+  }
 }
 
-function renderLeaderboard() {
-  const rows = loadEntries();
+function score2color(pct) {
+  if (pct >= 90) return '#4ade80';
+  if (pct >= 70) return '#facc15';
+  if (pct >= 45) return '#fb923c';
+  return 'var(--accent)';
+}
+
+// ── Leaderboard (server API) ─────────────────────
+async function loadEntries() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    if (!res.ok) throw new Error('bad response');
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function saveEntry(entry) {
+  try {
+    const entries = await loadEntries();
+    entries.push(entry);
+    entries.sort((a, b) => b.totalScore - a.totalScore);
+    await fetch('/api/leaderboard', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(entries.slice(0, 200)),
+    });
+  } catch (e) {
+    console.error('Leaderboard save failed:', e);
+  }
+}
+
+function rankSymbol(i) { return ['🥇','🥈','🥉'][i] ?? (i + 1); }
+
+async function renderLeaderboard() {
+  lbBody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:20px">Загрузка…</td></tr>';
+  lbEmpty.classList.add('hidden');
+  const rows = await loadEntries();
 
   if (rows.length === 0) {
     lbBody.innerHTML = '';
@@ -290,35 +393,46 @@ function renderLeaderboard() {
     <tr class="${i < 3 ? 'rank-'+(i+1) : ''}">
       <td>${rankSymbol(i)}</td>
       <td>${escHtml(e.name)}</td>
-      <td><span class="lb-score ${gradeClass(e.score)}">${e.score}</span></td>
-      <td>${e.dE}</td>
+      <td><span class="lb-score ${gradeClass(Math.round(e.totalScore / e.maxScore * 100))}">
+        ${e.totalScore} <small style="color:var(--muted)">/ ${e.maxScore}</small>
+      </span></td>
+      <td style="color:var(--muted)">${e.rounds}</td>
       <td style="font-size:0.8rem;color:var(--muted)">${e.date}</td>
     </tr>
   `).join('');
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+async function openLeaderboard(fromScreen) {
+  state.prevScreen = fromScreen;
+  showScreen('leaderboard');
+  await renderLeaderboard();
 }
 
-function openLeaderboard(fromScreen) {
-  state.prevScreen = fromScreen;
-  renderLeaderboard();
-  showScreen('leaderboard');
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Settings ────────────────────────────────────
 btnSettings.addEventListener('click', () => {
-  settingTime.value = state.memorizeTime;
+  settingTime.value   = state.memorizeTime;
+  settingRounds.value = state.roundsTotal;
   modalSettings.classList.remove('hidden');
 });
 btnSettingsSave.addEventListener('click', () => {
-  state.memorizeTime = Math.max(1, Math.min(30, +settingTime.value)) || 5;
+  state.memorizeTime = Math.max(1, Math.min(30, +settingTime.value))   || 5;
+  state.roundsTotal  = Math.max(1, Math.min(10, +settingRounds.value)) || 3;
   modalSettings.classList.add('hidden');
 });
 btnSettingsCancel.addEventListener('click', () => modalSettings.classList.add('hidden'));
 modalSettings.addEventListener('click', e => {
   if (e.target === modalSettings) modalSettings.classList.add('hidden');
+});
+
+// ── Help ─────────────────────────────────────────
+btnHelp.addEventListener('click', () => modalHelp.classList.remove('hidden'));
+btnHelpClose.addEventListener('click', () => modalHelp.classList.add('hidden'));
+modalHelp.addEventListener('click', e => {
+  if (e.target === modalHelp) modalHelp.classList.add('hidden');
 });
 
 // ── Wiring ───────────────────────────────────────
@@ -329,21 +443,30 @@ btnStart.addEventListener('click', () => {
     return;
   }
   playerNameInput.style.borderColor = '';
+  state.playerName  = playerNameInput.value.trim();
+  state.currentRound = 1;
+  state.roundScores  = [];
   showScreen('memorize');
   startMemorize();
 });
 
 btnSubmit.addEventListener('click', submitGuess);
 
+btnNextRound.addEventListener('click', () => {
+  showScreen('memorize');
+  startMemorize();
+});
+
 btnAgain.addEventListener('click', () => {
-  // Сбрасываем имя и показываем поле снова
+  // Reset for new game — show name entry
   playerNameInput.value = '';
   nameRow.classList.remove('hidden');
-  btnStart.style.display = '';
+  roundBadgeMem.classList.add('hidden');
   targetSwatch.classList.add('hidden');
   timerBarWrap.classList.add('hidden');
   countdownLabel.textContent = '';
   memorizeSubtitle.textContent = 'Введи имя и начинай!';
+  btnStart.style.display = '';
   showScreen('memorize');
 });
 
@@ -352,10 +475,17 @@ btnShowLb.addEventListener('click', () => openLeaderboard('result'));
 
 btnLbBack.addEventListener('click', () => showScreen(state.prevScreen));
 
-btnLbClear.addEventListener('click', () => {
-  if (confirm('Удалить все результаты?')) {
-    localStorage.removeItem(LS_KEY);
+btnLbClear.addEventListener('click', async () => {
+  if (!confirm('Удалить все результаты?')) return;
+  try {
+    await fetch('/api/leaderboard', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    '[]',
+    });
     renderLeaderboard();
+  } catch (e) {
+    alert('Ошибка при очистке: ' + e.message);
   }
 });
 
