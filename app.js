@@ -84,7 +84,7 @@ const btnHelp        = document.getElementById('btn-help');
 const btnHelpClose   = document.getElementById('btn-help-close');
 
 // ── Canvas sizes ────────────────────────────────
-const STRIP_W = 52, STRIP_H = 340;
+const STRIP_W = 64, STRIP_H = 420;
 [hueStrip, satStrip, litStrip].forEach(c => { c.width = STRIP_W; c.height = STRIP_H; });
 
 // ── Color math ──────────────────────────────────
@@ -288,10 +288,6 @@ function showRoundResult(score, dE, t, g, isFinal) {
     <span class="value">${rgbToHex(t).toUpperCase()} &nbsp; rgb(${t.r},${t.g},${t.b})</span><br>
     <span class="label">Твой ответ:</span>
     <span class="value">${rgbToHex(g).toUpperCase()} &nbsp; rgb(${g.r},${g.g},${g.b})</span><br>
-    <span class="label">Расстояние RGB:</span>
-    <span class="value">${colorDistance(t,g).toFixed(1)} / 441</span><br>
-    <span class="label">Воспринимаемое ΔE:</span>
-    <span class="value">${dE}</span><br>
     <span class="label">Счёт раунда:</span>
     <span class="value">${score} / 100</span>
   `;
