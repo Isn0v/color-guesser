@@ -37,8 +37,10 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
+  const urlPath = req.url.split('?')[0];
+
   // ── GET /api/leaderboard ──────────────────────
-  if (req.method === 'GET' && req.url === '/api/leaderboard') {
+  if (req.method === 'GET' && urlPath === '/api/leaderboard') {
     if (!fs.existsSync(LB_FILE)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('[]');
@@ -53,7 +55,7 @@ const server = http.createServer((req, res) => {
   }
 
   // ── POST /api/leaderboard ─────────────────────
-  if (req.method === 'POST' && req.url === '/api/leaderboard') {
+  if (req.method === 'POST' && urlPath === '/api/leaderboard') {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
@@ -73,10 +75,8 @@ const server = http.createServer((req, res) => {
   }
 
   // ── Static files ──────────────────────────────
-  const urlPath  = req.url.split('?')[0];
   const filePath = path.join(DIR, urlPath === '/' ? 'index.html' : urlPath);
 
-  // Safety: don't serve outside the project dir
   if (!filePath.startsWith(DIR)) { res.writeHead(403); res.end(); return; }
 
   serveFile(res, filePath);

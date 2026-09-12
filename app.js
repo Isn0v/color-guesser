@@ -4,19 +4,16 @@
 
 // ── State ──────────────────────────────────────
 const state = {
-  // colors
   targetColor: { r: 0, g: 0, b: 0 },
   guessColor:  { r: 128, g: 128, b: 128 },
-  // HSL picker
   h: 0, s: 0, l: 50,
-  // game flow
   memorizeTime: 5,
   roundsTotal:  3,
   currentRound: 1,
-  roundScores:  [],   // [{score, dE, target, guess}]
+  roundScores:  [],
   playerName:   '',
   prevScreen:   'memorize',
-  // drag
+  cachedDb:     [],
   drag: null,
 };
 
@@ -28,15 +25,16 @@ const screens = {
   leaderboard: document.getElementById('screen-leaderboard'),
 };
 
-const targetSwatch    = document.getElementById('target-swatch');
-const timerBar        = document.getElementById('timer-bar');
-const timerBarWrap    = document.getElementById('timer-bar-wrap');
-const countdownLabel  = document.getElementById('countdown-label');
-const btnStart        = document.getElementById('btn-start');
-const playerNameInput = document.getElementById('player-name');
-const nameRow         = document.getElementById('name-row');
-const memorizeSubtitle= document.getElementById('memorize-subtitle');
-const roundBadgeMem   = document.getElementById('round-badge-mem');
+const targetSwatch     = document.getElementById('target-swatch');
+const timerBar         = document.getElementById('timer-bar');
+const timerBarWrap     = document.getElementById('timer-bar-wrap');
+const countdownLabel   = document.getElementById('countdown-label');
+const btnStart         = document.getElementById('btn-start');
+const playerNameInput  = document.getElementById('player-name');
+const userTip          = document.getElementById('user-tip');
+const nameRow          = document.getElementById('name-row');
+const memorizeSubtitle = document.getElementById('memorize-subtitle');
+const roundBadgeMem    = document.getElementById('round-badge-mem');
 
 const hueStrip    = document.getElementById('hue-strip');
 const satStrip    = document.getElementById('sat-strip');
@@ -118,6 +116,82 @@ function gradeEmoji(score) {
   if (score >= 45) return '😐 Неплохо';
   return '😬 Попробуй ещё';
 }
+
+// ── Nickname Validation & Suggestions ───────────
+function getItemNick(item) {
+  if (!item) return '';
+  return String(item.handle || item.name || '').trim();
+}
+
+function getBaseNick(rawNick) {
+  if (!rawNick || typeof rawNick !== 'string') return '';
+  return rawNick.trim().replace(/(_\d+)+$/i, '').trim() || rawNick.trim();
+}
+
+function getNextAvailableNick(rawNick, existingList) {
+  const base = getBaseNick(rawNick);
+  const escapeBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^${escapeBase}(_(\\d+))?$`, 'i');
+
+  let maxNum = 1;
+  let baseFound = false;
+
+  existingList.forEach(item => {
+    const nick = getItemNick(item);
+    const match = nick.match(regex);
+    if (match) {
+      if (!match[2]) baseFound = true;
+      else {
+        const num = parseInt(match[2], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+  });
+
+  return (!baseFound && maxNum === 1) ? base : `${base}_${maxNum + 1}`;
+}
+
+async function checkUserStatus() {
+  const raw = playerNameInput.value.trim();
+  if (!raw) {
+    if (userTip) {
+      userTip.className = 'user-status-tip';
+      userTip.textContent = 'Никнейм должен быть уникальным';
+    }
+    return false;
+  }
+
+  await loadEntries();
+  const lower = raw.toLowerCase();
+  const existing = state.cachedDb.find(e => getItemNick(e).toLowerCase() === lower);
+
+  if (existing) {
+    const nextAvailable = getNextAvailableNick(raw, state.cachedDb);
+    const scoreVal = existing.totalScore ?? existing.score ?? 0;
+    if (userTip) {
+      userTip.className = 'user-status-tip error';
+      userTip.innerHTML = `Занят (${scoreVal} очков). Жми для выбора: <b id="suggested-nick-btn" style="cursor:pointer; text-decoration:underline; color:var(--gold); padding:2px 6px; background:rgba(250,204,21,0.15); border-radius:6px;">${nextAvailable}</b>`;
+
+      const suggestBtn = document.getElementById('suggested-nick-btn');
+      if (suggestBtn) {
+        suggestBtn.onclick = () => {
+          playerNameInput.value = nextAvailable;
+          checkUserStatus();
+          playerNameInput.focus();
+        };
+      }
+    }
+    return false;
+  } else {
+    if (userTip) {
+      userTip.className = 'user-status-tip new-user';
+      userTip.textContent = 'Никнейм свободен! Готов к игре.';
+    }
+    return true;
+  }
+}
+
+playerNameInput.addEventListener('input', checkUserStatus);
 
 // ── Generate color ───────────────────────────────
 function rand(mn, mx) { return Math.round(Math.random()*(mx-mn)+mn); }
@@ -274,15 +348,12 @@ function submitGuess() {
 
 // ── Show round result ───────────────────────────
 function showRoundResult(score, dE, t, g, isFinal) {
-  // Badge
   setBadge(resultRoundBadge, state.currentRound, state.roundsTotal);
   resultSubtitle.textContent = isFinal ? 'Финальный результат' : 'Результат раунда';
 
-  // Swatches
   resultTarget.style.background = rgbStr(t);
   resultGuess.style.background  = rgbStr(g);
 
-  // Stats
   resultStats.innerHTML = `
     <span class="label">Оригинал:</span>
     <span class="value">${rgbToHex(t).toUpperCase()} &nbsp; rgb(${t.r},${t.g},${t.b})</span><br>
@@ -292,14 +363,11 @@ function showRoundResult(score, dE, t, g, isFinal) {
     <span class="value">${score} / 100</span>
   `;
 
-  // Grade
   resultGrade.className = 'grade ' + gradeClass(score);
   resultGrade.textContent = gradeEmoji(score);
 
-  // Rounds progress pills
   renderRoundsPills(isFinal);
 
-  // Final total
   if (isFinal) {
     const total = state.roundScores.reduce((s, r) => s + r.score, 0);
     const max   = state.roundsTotal * 100;
@@ -311,7 +379,6 @@ function showRoundResult(score, dE, t, g, isFinal) {
     finalTotal.classList.add('hidden');
   }
 
-  // Buttons
   btnNextRound.classList.toggle('hidden', isFinal);
   btnAgain.classList.toggle('hidden', !isFinal);
 
@@ -350,21 +417,26 @@ async function loadEntries() {
   try {
     const res = await fetch('/api/leaderboard');
     if (!res.ok) throw new Error('bad response');
-    return await res.json();
+    const text = await res.text();
+    state.cachedDb = (text && text.trim()) ? JSON.parse(text) : [];
   } catch {
-    return [];
+    state.cachedDb = JSON.parse(localStorage.getItem('color_leaderboard_stable') || '[]');
   }
+  return state.cachedDb;
 }
 
 async function saveEntry(entry) {
+  const entries = await loadEntries();
+  entries.push(entry);
+  entries.sort((a, b) => b.totalScore - a.totalScore);
+  state.cachedDb = entries;
+  const payload = entries.slice(0, 200);
+  localStorage.setItem('color_leaderboard_stable', JSON.stringify(payload));
   try {
-    const entries = await loadEntries();
-    entries.push(entry);
-    entries.sort((a, b) => b.totalScore - a.totalScore);
     await fetch('/api/leaderboard', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(entries.slice(0, 200)),
+      body:    JSON.stringify(payload),
     });
   } catch (e) {
     console.error('Leaderboard save failed:', e);
@@ -432,14 +504,24 @@ modalHelp.addEventListener('click', e => {
 });
 
 // ── Wiring ───────────────────────────────────────
-btnStart.addEventListener('click', () => {
-  if (!playerNameInput.value.trim()) {
+btnStart.addEventListener('click', async () => {
+  const nick = playerNameInput.value.trim();
+  if (!nick) {
     playerNameInput.focus();
-    playerNameInput.style.borderColor = 'var(--accent)';
+    if (userTip) {
+      userTip.className = 'user-status-tip error';
+      userTip.textContent = 'Введи никнейм для участия!';
+    }
     return;
   }
-  playerNameInput.style.borderColor = '';
-  state.playerName  = playerNameInput.value.trim();
+
+  const isAvailable = await checkUserStatus();
+  if (!isAvailable) {
+    playerNameInput.focus();
+    return;
+  }
+
+  state.playerName   = nick;
   state.currentRound = 1;
   state.roundScores  = [];
   showScreen('memorize');
@@ -454,14 +536,14 @@ btnNextRound.addEventListener('click', () => {
 });
 
 btnAgain.addEventListener('click', () => {
-  // Reset for new game — show name entry
   playerNameInput.value = '';
+  checkUserStatus();
   nameRow.classList.remove('hidden');
   roundBadgeMem.classList.add('hidden');
   targetSwatch.classList.add('hidden');
   timerBarWrap.classList.add('hidden');
   countdownLabel.textContent = '';
-  memorizeSubtitle.textContent = 'Введи имя и начинай!';
+  memorizeSubtitle.textContent = 'Запомни цвет за 5 секунд и повтори его как можно точнее!';
   btnStart.style.display = '';
   showScreen('memorize');
 });
@@ -471,21 +553,26 @@ btnShowLb.addEventListener('click', () => openLeaderboard('result'));
 
 btnLbBack.addEventListener('click', () => showScreen(state.prevScreen));
 
-btnLbClear.addEventListener('click', async () => {
-  if (!confirm('Удалить все результаты?')) return;
-  try {
-    await fetch('/api/leaderboard', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    '[]',
-    });
-    renderLeaderboard();
-  } catch (e) {
-    alert('Ошибка при очистке: ' + e.message);
-  }
-});
+if (btnLbClear) {
+  btnLbClear.addEventListener('click', async () => {
+    if (!confirm('Удалить все результаты?')) return;
+    state.cachedDb = [];
+    localStorage.removeItem('color_leaderboard_stable');
+    try {
+      await fetch('/api/leaderboard', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    '[]',
+      });
+      renderLeaderboard();
+    } catch (e) {
+      alert('Ошибка при очистке: ' + e.message);
+    }
+  });
+}
 
 // ── Init ─────────────────────────────────────────
 redrawAll();
 applyHSL();
+checkUserStatus();
 showScreen('memorize');
