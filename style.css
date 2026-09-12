@@ -422,3 +422,12 @@ h1 {
   .strip-wrap { width: 48px; }
   .palette-picker { gap: 12px; height: 320px; }
 }
+
+.user-status-tip {
+  font-size: 1.05rem;
+  min-height: 28px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+.user-status-tip.new-user { color: #4ade80; }
+.user-status-tip.error { color: var(--accent); font-weight: 600; }
