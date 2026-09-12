@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Угадай цвет</title>
-    <!-- Emoji favicon -->
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>"
@@ -16,30 +15,26 @@
       <div class="top-bar">
         <h1><span class="h1-icon">🎨</span> Угадай цвет</h1>
         <div class="top-btn-group">
-          <button id="btn-open-lb" class="icon-btn" title="Лидерборд">
-            🏆
-          </button>
+          <button id="btn-open-lb" class="icon-btn" title="Лидерборд">🏆</button>
           <button id="btn-help" class="icon-btn" title="Как играть">❓</button>
         </div>
       </div>
 
       <!-- ══ ЭКРАН: старт ══ -->
       <div id="screen-memorize" class="screen active">
-        <p class="subtitle" id="memorize-subtitle">Введи имя и начинай!</p>
+        <p class="subtitle" id="memorize-subtitle">Запомни цвет за 5 секунд и повтори его как можно точнее!</p>
 
-        <div id="name-row">
+        <div class="auth-card" id="name-row">
           <input
             id="player-name"
-            class="name-input"
+            class="input-field"
             type="text"
-            maxlength="20"
-            placeholder="Твоё имя…"
+            maxlength="30"
+            placeholder="Введите никнейм..."
             autocomplete="off"
             spellcheck="false"
           />
-          <div id="user-tip" class="user-status-tip">
-            Укажи ник или @ник_в_тг для участия в турнире
-          </div>
+          <div id="user-tip" class="user-status-tip">Никнейм должен быть уникальным</div>
         </div>
 
         <div id="round-badge-mem" class="round-badge hidden"></div>
@@ -103,10 +98,8 @@
         <div id="result-stats" class="stats"></div>
         <div id="result-grade" class="grade"></div>
 
-        <!-- Прогресс всех раундов -->
         <div id="rounds-progress" class="rounds-progress"></div>
 
-        <!-- Финальный итог (только после последнего раунда) -->
         <div id="final-total" class="final-total hidden">
           <span class="total-label">Итого</span>
           <span id="total-val" class="total-val">0</span>
@@ -147,7 +140,6 @@
         </div>
         <div class="result-actions">
           <button id="btn-lb-back" class="btn primary">← Назад</button>
-          <button id="btn-lb-clear" class="btn danger">🗑 Очистить</button>
         </div>
       </div>
     </div>
@@ -156,12 +148,10 @@
     <div id="modal-settings" class="modal-overlay hidden">
       <div class="modal">
         <h2>⚙ Настройки</h2>
-        <label
-          >Время запоминания (сек):
+        <label>Время запоминания (сек):
           <input type="number" id="setting-time" min="1" max="30" value="5" />
         </label>
-        <label
-          >Количество раундов:
+        <label>Количество раундов:
           <input type="number" id="setting-rounds" min="1" max="10" value="3" />
         </label>
         <div class="modal-actions">
@@ -234,8 +224,7 @@
           <ul>
             <li><b>Время запоминания</b> — сколько секунд виден цвет (1–30)</li>
             <li>
-              <b>Раунды</b> — количество цветов за одну игру (1–10, по умолчанию
-              3)
+              <b>Раунды</b> — количество цветов за одну игру (1–10, по умолчанию 3)
             </li>
           </ul>
           <p style="margin-top: 6px">

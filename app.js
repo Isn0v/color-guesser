@@ -4,20 +4,16 @@
 
 // ── State ──────────────────────────────────────
 const state = {
-  // colors
   targetColor: { r: 0, g: 0, b: 0 },
   guessColor:  { r: 128, g: 128, b: 128 },
-  // HSL picker
   h: 0, s: 0, l: 50,
-  // game flow
   memorizeTime: 5,
   roundsTotal:  3,
   currentRound: 1,
-  roundScores:  [],   // [{score, dE, target, guess}]
+  roundScores:  [],
   playerName:   '',
   prevScreen:   'memorize',
   cachedDb:     [],
-  // drag
   drag: null,
 };
 
@@ -29,16 +25,16 @@ const screens = {
   leaderboard: document.getElementById('screen-leaderboard'),
 };
 
-const targetSwatch    = document.getElementById('target-swatch');
-const timerBar        = document.getElementById('timer-bar');
-const timerBarWrap    = document.getElementById('timer-bar-wrap');
-const countdownLabel  = document.getElementById('countdown-label');
-const btnStart        = document.getElementById('btn-start');
-const playerNameInput = document.getElementById('player-name');
-const userTip         = document.getElementById('user-tip');
-const nameRow         = document.getElementById('name-row');
-const memorizeSubtitle= document.getElementById('memorize-subtitle');
-const roundBadgeMem   = document.getElementById('round-badge-mem');
+const targetSwatch     = document.getElementById('target-swatch');
+const timerBar         = document.getElementById('timer-bar');
+const timerBarWrap     = document.getElementById('timer-bar-wrap');
+const countdownLabel   = document.getElementById('countdown-label');
+const btnStart         = document.getElementById('btn-start');
+const playerNameInput  = document.getElementById('player-name');
+const userTip          = document.getElementById('user-tip');
+const nameRow          = document.getElementById('name-row');
+const memorizeSubtitle = document.getElementById('memorize-subtitle');
+const roundBadgeMem    = document.getElementById('round-badge-mem');
 
 const hueStrip    = document.getElementById('hue-strip');
 const satStrip    = document.getElementById('sat-strip');
@@ -160,7 +156,7 @@ async function checkUserStatus() {
   if (!raw) {
     if (userTip) {
       userTip.className = 'user-status-tip';
-      userTip.textContent = 'Укажи ник или @ник_в_тг для участия в турнире';
+      userTip.textContent = 'Никнейм должен быть уникальным';
     }
     return false;
   }
@@ -547,7 +543,7 @@ btnAgain.addEventListener('click', () => {
   targetSwatch.classList.add('hidden');
   timerBarWrap.classList.add('hidden');
   countdownLabel.textContent = '';
-  memorizeSubtitle.textContent = 'Введи имя и начинай!';
+  memorizeSubtitle.textContent = 'Запомни цвет за 5 секунд и повтори его как можно точнее!';
   btnStart.style.display = '';
   showScreen('memorize');
 });
@@ -557,21 +553,23 @@ btnShowLb.addEventListener('click', () => openLeaderboard('result'));
 
 btnLbBack.addEventListener('click', () => showScreen(state.prevScreen));
 
-btnLbClear.addEventListener('click', async () => {
-  if (!confirm('Удалить все результаты?')) return;
-  state.cachedDb = [];
-  localStorage.removeItem('color_leaderboard_stable');
-  try {
-    await fetch('/api/leaderboard', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    '[]',
-    });
-    renderLeaderboard();
-  } catch (e) {
-    alert('Ошибка при очистке: ' + e.message);
-  }
-});
+if (btnLbClear) {
+  btnLbClear.addEventListener('click', async () => {
+    if (!confirm('Удалить все результаты?')) return;
+    state.cachedDb = [];
+    localStorage.removeItem('color_leaderboard_stable');
+    try {
+      await fetch('/api/leaderboard', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    '[]',
+      });
+      renderLeaderboard();
+    } catch (e) {
+      alert('Ошибка при очистке: ' + e.message);
+    }
+  });
+}
 
 // ── Init ─────────────────────────────────────────
 redrawAll();
